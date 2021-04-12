@@ -6,7 +6,6 @@ var express = require("express"); // express käyttöön
 var app = express();
 var cors = require("cors"); // otetaan cors käyttöön herokun suojauksien takia.
 app.use(express.static("./public"));
-
 // app käyttöön
 app.use(express.urlencoded({ extended: true }));
 // Pakolliset mongoose parametrit
@@ -39,10 +38,13 @@ const raflat = mongoose.model(
 );
 
 // Haetaan kaikki data ravintoloista
+
 app.get("/api/getall", function (req, res) {
-  raflat.find({}, function (err, results) {
-    res.json(results, 200);
-  });
+  raflat
+    .find({}, function (err, results) {
+      res.json(results, 200);
+    })
+    .limit(20); // Rajoitetaan hakutulokset 20kpl.
 });
 // Haetaan ravintoloita tietyn id:n mukaan
 app.get("/api/hae/:id", function (req, res) {
@@ -56,11 +58,13 @@ app.get("/api/hae/:id", function (req, res) {
 // Haetaan ravintoloita alueen mukaan. Esim Queens.
 app.get("/api/alue/:area", function (req, res) {
   let query = { borough: req.params.area }; // Borough on kenttä tietokannassa, jonka mukaan haku tehdään.
-  raflat.find(query, function (err, results) {
-    if (err) res.send(err);
-    console.log("Ravintoloita haettiin alueen mukaan " + req.params.area);
-    res.status(200).json(results);
-  });
+  raflat
+    .find(query, function (err, results) {
+      if (err) res.send(err);
+      console.log("Ravintoloita haettiin alueen mukaan " + req.params.area);
+      res.status(200).json(results);
+    })
+    .limit(5); // rajoitetaan hakutulokset viiteen.
 });
 
 // Lisätään kentät name, borough, cuisine uuden ravintolan lisäystä varten.
