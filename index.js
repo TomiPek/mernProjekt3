@@ -1,81 +1,45 @@
 const PORT = process.env.PORT || 8081;
-var mongoose = require("mongoose"); // mongoose käyttöön
+const mongoose = require("mongoose"); // mongoose käyttöön.
 
 const uri = process.env.DB_uri;
-var express = require("express"); // express käyttöön
-var app = express();
-var cors = require("cors"); // otetaan cors käyttöön herokun suojauksien takia.
+const express = require("express"); // express käyttöön.
+const app = express(); // app käyttää expressiä.
+const cors = require("cors"); // otetaan cors käyttöön herokun suojauksien takia.
 app.use(express.static("./public"));
-// app käyttöön
+const restaurantSchema = require("./updates"); //päivityksiä varten Schemat.
+const mongo = require("./restaurantdata"); // Schema data.
+const route = require("./routes"); // Reiteistä osa sijaitsee routes tiedossa. Otetaan käyttöön ne.
+app.use("/", route);
+
+// app käyttöön.
 app.use(express.urlencoded({ extended: true }));
-// Pakolliset mongoose parametrit
+// Pakolliset mongoose parametrit.
 mongoose.connect(uri, { useNewUrlParser: true, useUnifiedTopology: true });
-var db = mongoose.connection;
+const db = mongoose.connection;
+
 // Tulostetaan tieto mahdollisesta yhdistämisestä / yhteydestä.
-db.on("error", function () {
+db.on("error", () => {
   console.log("Yhteysvirhe!");
 });
 
-db.once("open", function () {
+db.once("open", () => {
   console.log("Yhteys muodostettu");
 });
 
-// ohje sivu
+// ohje sivu.
 app.get("/", (req, res) => {
   res.sendFile(__dirname + "/index.html");
 });
-// Määritellään Schema ravintoloita varten.
-const raflat = mongoose.model(
-  "Ravintolat",
-  {
-    name: String,
-    borough: String,
-    restaurant_id: Number,
-    grades: Array,
-    cuisine: String,
-  },
-  "restaurants" // paikka tietokannassa missä dataa haetaan.
-);
 
-// Haetaan kaikki data ravintoloista
-
-app.get("/api/getall", function (req, res) {
-  raflat
-    .find({}, function (err, results) {
-      res.json(results, 200);
-    })
-    .limit(20); // Rajoitetaan hakutulokset 20kpl.
-});
-// Haetaan ravintoloita tietyn id:n mukaan
-app.get("/api/hae/:id", function (req, res) {
-  let query = { _id: req.params.id };
-  raflat.find(query, function (err, results) {
-    if (err) res.send(err);
-    console.log("Ravintoloita haettiin id:llä " + req.params.id);
-    res.status(200).json(results);
-  });
-});
-// Haetaan ravintoloita alueen mukaan. Esim Queens.
-app.get("/api/alue/:area", function (req, res) {
-  let query = { borough: req.params.area }; // Borough on kenttä tietokannassa, jonka mukaan haku tehdään.
-  raflat
-    .find(query, function (err, results) {
-      if (err) res.send(err);
-      console.log("Ravintoloita haettiin alueen mukaan " + req.params.area);
-      res.status(200).json(results);
-    })
-    .limit(5); // rajoitetaan hakutulokset viiteen.
-});
-
-// Lisätään kentät name, borough, cuisine uuden ravintolan lisäystä varten.
-app.post("/api/add/", function (req, res) {
-  let newRestaurant = new raflat({
-    name: req.body.name,
+app.post("/api/add/", (req, res) => {
+  let newRestaurant = new restaurantSchema({
+    // Käytetään restaurantSchema modulia.
+    name: req.body.name, // Täytettävät kentät
     borough: req.body.borough,
     cuisine: req.body.cuisine,
   });
   // Otetaan talteen kentät ja lisätään ne tietokantaan.
-  newRestaurant.save(function (err, result) {
+  newRestaurant.save((err, result) => {
     if (err) console.log(err);
     console.log(
       "Tallennettu: " + req.body.name + " sijainnissa: " + req.body.borough
@@ -83,27 +47,19 @@ app.post("/api/add/", function (req, res) {
     res.status(200).json("Tallennus suoritettu");
   });
 });
+
 //findOneAndUpdate virheilmoituksia varten asetukset returnOriginal ja useFindAndModify.
 mongoose.set("returnOriginal", false);
 mongoose.set("useFindAndModify", false);
 // Päivitetään haluttu ravintola / lisätään uusi. Ravintolan voi hakea esim id:n tai nimen mukaan ja jos nimen mukaan niin haku lisää uuden ravintolan tietokantaan.
-app.put("/api/update/:id", function (req, res) {
-  raflat.findOneAndUpdate(req.params.id, req.body, { new: true }, (err) => {
+app.put("/api/update/:id", (req, res) => {
+  mongo.findOneAndUpdate(req.params.id, req.body, { new: true }, (err) => {
     if (err) return res.status(200).send(err);
     console.log("Päivitetty " + req.params.id);
     res.send("Päivitetty " + req.params.id); // Lähetetään vastaus
   });
 });
-// Poistetaan id:n mukaan ravintola.
-app.delete("/api/delete/:id", function (req, res) {
-  // Määritellään id findByIdAndDelete haku parametria varten.
-  let id = req.params.id;
-  raflat.findByIdAndDelete(id, function (err) {
-    if (err) return res.status(200).send(err);
-    console.log("Deleted id: " + req.params.id);
-    res.send("Deleted id: " + req.params.id); // Lähetetään vastaus
-  });
-});
+
 // Kuunnellaan porttia 8081
 app.listen(PORT, () => {
   console.log("Listening port 8081.");
