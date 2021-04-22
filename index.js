@@ -1,10 +1,14 @@
 const PORT = process.env.PORT || 8081;
 const mongoose = require("mongoose"); // mongoose käyttöön.
 
-const uri = process.env.DB_uri;
+// const uri = process.env.DB_uri;
+var uri =
+  "mongodb+srv://testikayttaja:testisalasana@cluster0.tzbcb.mongodb.net/sample_restaurants";
 const express = require("express"); // express käyttöön.
 const app = express(); // app käyttää expressiä.
 const cors = require("cors"); // otetaan cors käyttöön herokun suojauksien takia.
+app.use(cors());
+
 app.use(express.static("./public"));
 const restaurantSchema = require("./updates"); //päivityksiä varten Schemat.
 const mongo = require("./restaurantdata"); // Schema data.
